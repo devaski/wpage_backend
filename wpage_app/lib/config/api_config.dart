@@ -1,9 +1,17 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 /// Backend API base URL.
-/// Android emulator uses 10.0.2.2 to reach host localhost.
+/// Release builds use Railway; debug builds use local uvicorn.
 class ApiConfig {
+  static const productionUrl =
+      'https://wpagebackend-production.up.railway.app';
+
   static String get baseUrl {
+    if (kReleaseMode) {
+      return productionUrl;
+    }
     if (Platform.isAndroid) {
       return 'http://10.0.2.2:8000';
     }
