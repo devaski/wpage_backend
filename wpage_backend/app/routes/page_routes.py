@@ -8,6 +8,7 @@ from app.controllers.page_controller import (
     qr_image_controller,
     qr_page_controller,
     render_page_controller,
+    render_preview_controller,
     update_page_controller,
 )
 from app.models.page import (
@@ -54,6 +55,11 @@ def update_page(alias: str, request: UpdatePageRequest):
 @router.get("/render/{alias}", response_class=HTMLResponse)
 def render_page(alias: str) -> HTMLResponse:
     return render_page_controller(alias)
+
+
+@router.post("/render/preview", response_class=HTMLResponse)
+def render_preview(request: UpdatePageRequest) -> HTMLResponse:
+    return render_preview_controller(request)
 
 
 @router.post("/page/{alias}/publish", response_model=PublishResponse)

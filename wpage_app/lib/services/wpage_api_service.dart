@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -23,6 +24,42 @@ class WPageApiService {
   final http.Client _client;
   final String _baseUrl;
 
+  static const _defaultTimeout = Duration(seconds: 30);
+  static const _generateTimeout = Duration(seconds: 120);
+
+  Future<http.Response> _get(Uri uri, {Map<String, String>? headers}) {
+    return _client
+        .get(uri, headers: headers)
+        .timeout(_defaultTimeout, onTimeout: _onTimeout);
+  }
+
+  Future<http.Response> _post(
+    Uri uri, {
+    Map<String, String>? headers,
+    Object? body,
+    Duration timeout = _defaultTimeout,
+  }) {
+    return _client
+        .post(uri, headers: headers, body: body)
+        .timeout(timeout, onTimeout: _onTimeout);
+  }
+
+  Future<http.Response> _put(
+    Uri uri, {
+    Map<String, String>? headers,
+    Object? body,
+  }) {
+    return _client
+        .put(uri, headers: headers, body: body)
+        .timeout(_defaultTimeout, onTimeout: _onTimeout);
+  }
+
+  Never _onTimeout() {
+    throw WPageApiException(
+      'Request timed out. Check your internet connection and try again.',
+    );
+  }
+
   Future<GeneratePageResult> generateWPage({
     required String identity,
     required String title,
@@ -44,10 +81,11 @@ class WPageApiService {
       body['purpose'] = purpose;
     }
 
-    final response = await _client.post(
+    final response = await _post(
       Uri.parse('$_baseUrl/generate-page'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(body),
+      timeout: _generateTimeout,
     );
     _throwIfError(response);
     return GeneratePageResult.fromJson(
@@ -61,7 +99,7 @@ class WPageApiService {
     required String purpose,
     required String description,
   }) async {
-    final response = await _client.post(
+    final response = await _post(
       Uri.parse('$_baseUrl/generate-page'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
@@ -70,6 +108,7 @@ class WPageApiService {
         'purpose': purpose,
         'description': description,
       }),
+      timeout: _generateTimeout,
     );
     _throwIfError(response);
     return GeneratePageResult.fromJson(
@@ -78,7 +117,7 @@ class WPageApiService {
   }
 
   Future<PageModel> getPage(String alias) async {
-    final response = await _client.get(
+    final response = await _get(
       Uri.parse('$_baseUrl/page/$alias'),
       headers: {'Accept': 'application/json'},
     );
@@ -87,7 +126,7 @@ class WPageApiService {
   }
 
   Future<PageModel> updatePage(PageModel page) async {
-    final response = await _client.put(
+    final response = await _put(
       Uri.parse('$_baseUrl/page/${page.alias}'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(page.toJson()),
@@ -96,12 +135,20 @@ class WPageApiService {
     return PageModel.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
   }
 
+  Future<String> fetchPreviewHtml(PageModel page) async {
+    final response = await _post(
+      Uri.parse('$_baseUrl/render/preview'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(page.toJson()),
+    );
+    _throwIfError(response);
+    return response.body;
+  }
+
   String renderUrl(String alias) => '$_baseUrl/render/$alias';
 
   Future<PublishResult> publishPage(String alias) async {
-    final response = await _client.post(
-      Uri.parse('$_baseUrl/page/$alias/publish'),
-    );
+    final response = await _post(Uri.parse('$_baseUrl/page/$alias/publish'));
     _throwIfError(response);
     return PublishResult.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
@@ -109,7 +156,7 @@ class WPageApiService {
   }
 
   Future<String> getQrCodeUrl(String alias, {int size = 300}) async {
-    final response = await _client.post(
+    final response = await _post(
       Uri.parse('$_baseUrl/page/$alias/qr'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'size': size}),
@@ -129,6 +176,8 @@ class WPageApiService {
         body['detail']?.toString() ?? 'Request failed',
         statusCode: response.statusCode,
       );
+    } on WPageApiException {
+      rethrow;
     } catch (_) {
       throw WPageApiException(
         'Request failed (${response.statusCode})',

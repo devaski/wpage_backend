@@ -251,6 +251,18 @@ def _esc(value: Any) -> str:
     return html.escape(str(value)) if value is not None else ""
 
 
+def _format_list_item(item: Any) -> str:
+    if isinstance(item, dict):
+        label = (
+            item.get("title")
+            or item.get("name")
+            or item.get("label")
+            or item.get("text")
+        )
+        return _esc(label) if label is not None else _esc(item)
+    return _esc(item)
+
+
 def _content_dict(section: PageSection) -> dict[str, Any]:
     if isinstance(section.content, dict):
         return section.content
@@ -297,7 +309,7 @@ def _youtube_embed(url: str) -> str | None:
 
 
 def _render_hero(block: PageSection, content: dict[str, Any]) -> str:
-    title = _esc(content.get("heading", ""))
+    title = _esc(content.get("heading") or content.get("title") or "")
     subtitle = _esc(content.get("subheading", ""))
     subtitle_html = f'<p class="subtitle">{subtitle}</p>' if subtitle else ""
     return (
@@ -320,7 +332,7 @@ def _render_services(block: PageSection, content: dict[str, Any]) -> str:
     heading = _heading(content, "Services")
     items = _list_items(content, "items", "services")
     if items:
-        items_html = "".join(f"<li>{_esc(item)}</li>" for item in items)
+        items_html = "".join(f"<li>{_format_list_item(item)}</li>" for item in items)
         body = f'<ul class="services-grid">{items_html}</ul>'
     else:
         body = f"<p>{_text_to_html(str(content.get('text', '')))}</p>"

@@ -22,6 +22,7 @@ from app.services.openai_service import generate_page_data
 from app.services.qr_service import create_qr_response, generate_qr_png
 from app.services.render_service import render_page_html, render_public_page_html
 from app.utils.config import PUBLIC_BASE_URL
+from app.utils.page_normalizer import normalize_page_dict
 
 
 def generate_page_controller(request: GeneratePageRequest) -> GeneratePageResponse:
@@ -62,7 +63,20 @@ def render_page_controller(alias: str) -> HTMLResponse:
     page = get_page_by_alias(alias)
     if not page:
         raise HTTPException(status_code=404, detail=f"Page not found for alias: {alias}")
-    return HTMLResponse(render_public_page_html(page))
+    try:
+        return HTMLResponse(render_public_page_html(page))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to render page: {exc}") from exc
+
+
+def render_preview_controller(request: UpdatePageRequest) -> HTMLResponse:
+    page = PageData.model_validate(
+        normalize_page_dict({**request.model_dump(), "published": False})
+    )
+    try:
+        return HTMLResponse(render_public_page_html(page))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to render preview: {exc}") from exc
 
 
 def publish_page_controller(alias: str) -> PublishResponse:

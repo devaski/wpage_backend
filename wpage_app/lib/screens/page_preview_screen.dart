@@ -16,24 +16,45 @@ class PagePreviewScreen extends StatefulWidget {
 class _PagePreviewScreenState extends State<PagePreviewScreen> {
   final _api = WPageApiService();
   late final WebViewController _controller;
+  bool _loadingPreview = true;
   bool _publishing = false;
-  String? _error;
+  String? _previewError;
+  String? _publishError;
 
   @override
   void initState() {
     super.initState();
     _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..loadRequest(Uri.parse(_api.renderUrl(widget.page.alias)));
+      ..setJavaScriptMode(JavaScriptMode.unrestricted);
+    _loadPreview();
+  }
+
+  Future<void> _loadPreview() async {
+    setState(() {
+      _loadingPreview = true;
+      _previewError = null;
+    });
+
+    try {
+      final html = await _api.fetchPreviewHtml(widget.page);
+      await _controller.loadHtmlString(html);
+    } on WPageApiException catch (e) {
+      setState(() => _previewError = e.message);
+    } catch (_) {
+      setState(() => _previewError = 'Could not load preview. Please try again.');
+    } finally {
+      if (mounted) setState(() => _loadingPreview = false);
+    }
   }
 
   Future<void> _publish() async {
     setState(() {
       _publishing = true;
-      _error = null;
+      _publishError = null;
     });
 
     try {
+      await _api.updatePage(widget.page);
       final result = await _api.publishPage(widget.page.alias);
       if (!mounted) return;
       Navigator.pushReplacementNamed(
@@ -42,7 +63,7 @@ class _PagePreviewScreenState extends State<PagePreviewScreen> {
         arguments: result,
       );
     } on WPageApiException catch (e) {
-      setState(() => _error = e.message);
+      setState(() => _publishError = e.message);
     } finally {
       if (mounted) setState(() => _publishing = false);
     }
@@ -54,11 +75,36 @@ class _PagePreviewScreenState extends State<PagePreviewScreen> {
       appBar: AppBar(title: const Text('Preview')),
       body: Column(
         children: [
-          Expanded(child: WebViewWidget(controller: _controller)),
-          if (_error != null)
+          Expanded(
+            child: _loadingPreview
+                ? const Center(child: CircularProgressIndicator())
+                : _previewError != null
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                _previewError!,
+                                style: const TextStyle(color: Colors.red),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 16),
+                              FilledButton(
+                                onPressed: _loadPreview,
+                                child: const Text('Retry'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : WebViewWidget(controller: _controller),
+          ),
+          if (_publishError != null)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(_error!, style: const TextStyle(color: Colors.red)),
+              child: Text(_publishError!, style: const TextStyle(color: Colors.red)),
             ),
           SafeArea(
             child: Padding(
@@ -66,7 +112,7 @@ class _PagePreviewScreenState extends State<PagePreviewScreen> {
               child: SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: _publishing ? null : _publish,
+                  onPressed: _publishing || _loadingPreview ? null : _publish,
                   icon: _publishing
                       ? const SizedBox(
                           width: 18,

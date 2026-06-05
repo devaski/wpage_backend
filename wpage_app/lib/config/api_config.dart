@@ -1,21 +1,23 @@
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
-
 /// Backend API base URL.
-/// Release builds use Railway; debug builds use local uvicorn.
+/// Defaults to Railway. For local uvicorn:
+/// flutter run --dart-define=USE_LOCAL_BACKEND=true
 class ApiConfig {
   static const productionUrl =
       'https://wpagebackend-production.up.railway.app';
 
+  static const useLocalBackend =
+      bool.fromEnvironment('USE_LOCAL_BACKEND', defaultValue: false);
+
   static String get baseUrl {
-    if (kReleaseMode) {
-      return productionUrl;
+    if (useLocalBackend) {
+      if (Platform.isAndroid) {
+        return 'http://10.0.2.2:8000';
+      }
+      return 'http://127.0.0.1:8000';
     }
-    if (Platform.isAndroid) {
-      return 'http://10.0.2.2:8000';
-    }
-    return 'http://127.0.0.1:8000';
+    return productionUrl;
   }
 }
 
