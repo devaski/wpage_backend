@@ -13,7 +13,7 @@ _BACKEND_ROOT = Path(__file__).resolve().parent.parent.parent
 _LOCAL_SERVICE_ACCOUNT_FILE = _BACKEND_ROOT / "firebase_service_account.json"
 
 PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "https://wpage.app").rstrip("/")
-API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+API_BASE_URL = os.getenv("API_BASE_URL", "https://wpage.app").rstrip("/")
 
 openai_client = None
 if os.getenv("OPENAI_API_KEY"):
@@ -56,3 +56,4 @@ def get_firestore_client():
     if not firebase_admin._apps:
         return None
     return firestore.client()
+
