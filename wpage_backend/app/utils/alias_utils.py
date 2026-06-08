@@ -1,5 +1,20 @@
 import re
 
+RESERVED_PUBLIC_ALIASES = frozenset({
+    "health",
+    "docs",
+    "openapi.json",
+    "generate-page",
+    "page",
+    "render",
+    "qr",
+    "redoc",
+})
+
+
+def is_reserved_alias(alias: str) -> bool:
+    return alias.lower() in RESERVED_PUBLIC_ALIASES
+
 
 def derive_alias(identity: str) -> str:
     identity = identity.strip()

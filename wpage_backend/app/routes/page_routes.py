@@ -4,6 +4,7 @@ from fastapi.responses import HTMLResponse, Response
 from app.controllers.page_controller import (
     generate_page_controller,
     get_page_controller,
+    public_alias_controller,
     publish_page_controller,
     qr_image_controller,
     qr_page_controller,
@@ -75,3 +76,8 @@ def create_qr(alias: str, request: QrRequest | None = None) -> QrResponse:
 @router.get("/qr/{alias}.png")
 def get_qr_image(alias: str, size: int = Query(default=300, ge=100, le=1000)) -> Response:
     return qr_image_controller(alias, size)
+
+
+@router.get("/{alias}", response_class=HTMLResponse)
+def public_page(alias: str) -> HTMLResponse:
+    return public_alias_controller(alias)

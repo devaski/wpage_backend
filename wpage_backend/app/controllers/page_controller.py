@@ -21,6 +21,7 @@ from app.services.firestore_service import (
 from app.services.openai_service import generate_page_data
 from app.services.qr_service import create_qr_response, generate_qr_png
 from app.services.render_service import render_page_html, render_public_page_html
+from app.utils.alias_utils import is_reserved_alias
 from app.utils.config import PUBLIC_BASE_URL
 from app.utils.page_normalizer import normalize_page_dict
 
@@ -67,6 +68,12 @@ def render_page_controller(alias: str) -> HTMLResponse:
         return HTMLResponse(render_public_page_html(page))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to render page: {exc}") from exc
+
+
+def public_alias_controller(alias: str) -> HTMLResponse:
+    if is_reserved_alias(alias):
+        raise HTTPException(status_code=404, detail=f"Page not found for alias: {alias}")
+    return render_page_controller(alias)
 
 
 def render_preview_controller(request: UpdatePageRequest) -> HTMLResponse:
